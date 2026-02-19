@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ERLC Radio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: Arial;
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .radio {
+      background: #222;
+      padding: 20px;
+      border-radius: 15px;
+      display: inline-block;
+      width: 300px;
+    }
+
+    select, input {
+      width: 90%;
+      padding: 8px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: none;
+    }
+
+    button {
+      width: 90%;
+      padding: 15px;
+      background: red;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:active {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="radio">
+    <h2>ERLC RADIO</h2>
+
+    <input id="callsign" placeholder="Enter Callsign (1A-21)" />
+
+    <select id="channel">
+      <option value="leo-main">LEO Main</option>
+      <option value="fire-main">Fire Main</option>
+      <option value="dot-main">DOT</option>
+    </select>
+
+    <button id="ptt">Hold To Talk</button>
+  </div>
+
+  <script>
+    const button = document.getElementById("ptt");
+
+    button.addEventListener("mousedown", () => {
+      console.log("Talking...");
+    });
+
+    button.addEventListener("mouseup", () => {
+      console.log("Stopped Talking");
+    });
+  </script>
+
+</body>
+</html>
