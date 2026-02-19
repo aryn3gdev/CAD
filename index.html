@@ -51,6 +51,7 @@
 <script>
   const backend = "https://cad-backend-0ivi.onrender.com";
 
+  // Trigger Discord OAuth login
   function login() {
     const clientId = "1471224271148810439";
     const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/index.html");
@@ -60,12 +61,18 @@
       `https://discord.com/api/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirect}&scope=${encodeURIComponent(scope)}`;
   }
 
+  // Handle redirect after Discord OAuth
   async function handleLogin() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-    if (!code) return;
 
-    document.getElementById("status").innerText = "Authenticating...";
+    if (!code) {
+      console.log("No code found in URL, user not logging in yet.");
+      return;
+    }
+
+    const statusEl = document.getElementById("status");
+    if (statusEl) statusEl.innerText = "Authenticating...";
 
     try {
       const res = await fetch(`${backend}/auth`, {
@@ -75,26 +82,29 @@
       });
 
       const data = await res.json();
+      console.log("Backend response:", data); // DEBUG LOG
+
       if (!data.allowed) {
-        document.getElementById("status").innerText = "Access Denied.";
+        if (statusEl) statusEl.innerText = "Access Denied.";
         return;
       }
 
       // Save role + token
       localStorage.setItem("role", data.dispatch ? "dispatch" : "officer");
-      localStorage.setItem("token", "loggedin"); // simple placeholder token
+      localStorage.setItem("token", "loggedin"); // placeholder
 
       // Redirect to proper dashboard
       if (data.dispatch) window.location.href = "dispatch.html";
       else window.location.href = "officer.html";
 
     } catch (err) {
-      document.getElementById("status").innerText = "Login failed.";
-      console.error(err);
+      if (statusEl) statusEl.innerText = "Login failed.";
+      console.error("Error during login:", err);
     }
   }
 
-  handleLogin();
+  // Run on page load
+  window.addEventListener("DOMContentLoaded", handleLogin);
 </script>
 
 </body>
