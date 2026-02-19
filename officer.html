@@ -8,24 +8,26 @@
 <body class="bg-gray-100 font-sans">
 
 <!-- Navbar -->
-<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow">
+<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow relative">
   <h1 class="text-xl font-bold">ERLC Officer CAD</h1>
-  <div class="flex items-center space-x-4">
-    <span id="callsign-display" class="font-semibold"></span>
-    <button id="settings-btn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Settings</button>
+  
+  <!-- Settings dropdown -->
+  <div class="relative">
+    <button id="settings-btn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Settings ▾</button>
+    <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded shadow-lg text-black z-50">
+      <button id="change-callsign-btn" class="w-full text-left px-4 py-2 hover:bg-gray-200">Change Callsign</button>
+      <button id="switch-role-btn" class="w-full text-left px-4 py-2 hover:bg-gray-200">Switch Role</button>
+    </div>
   </div>
 </div>
 
-<!-- Callsign Modal -->
-<div id="callsign-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
-  <div class="bg-white rounded p-6 w-80 shadow">
-    <h2 class="text-lg font-bold mb-4">Enter your Callsign</h2>
-    <input id="callsign-input" type="text" placeholder="e.g. Unit 12" class="border p-2 w-full rounded mb-4"/>
-    <button id="callsign-submit" class="bg-blue-700 text-white px-4 py-2 rounded w-full">Save</button>
-  </div>
+<!-- Callsign display -->
+<div class="p-4 flex items-center space-x-4">
+  <span class="font-bold">Callsign:</span>
+  <span id="callsign-display" class="font-semibold">Loading...</span>
 </div>
 
-<!-- Status / 10-code buttons -->
+<!-- 10-code buttons -->
 <div class="p-4 grid grid-cols-5 gap-3">
   <button class="code-btn bg-green-500 text-white font-bold py-2 rounded" data-code="10-8">10-8</button>
   <button class="code-btn bg-red-500 text-white font-bold py-2 rounded" data-code="10-7">10-7</button>
@@ -45,15 +47,24 @@
   </select>
 </div>
 
+<!-- Callsign modal -->
+<div id="callsign-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded p-6 w-80 shadow">
+    <h2 class="text-lg font-bold mb-4">Enter your Callsign</h2>
+    <input id="callsign-input" type="text" placeholder="e.g. Unit 12" class="border p-2 w-full rounded mb-4"/>
+    <button id="callsign-submit" class="bg-blue-700 text-white px-4 py-2 rounded w-full">Save</button>
+  </div>
+</div>
+
 <script>
-  // ======= Callsign handling =======
+  // ====== Callsign handling ======
   const modal = document.getElementById('callsign-modal');
   const callsignDisplay = document.getElementById('callsign-display');
 
   function showModal() { modal.classList.remove('hidden'); }
   function hideModal() { modal.classList.add('hidden'); }
 
-  // First time visit
+  // Load callsign or show modal if first visit
   let callsign = localStorage.getItem('callsign');
   if (!callsign) showModal();
   else callsignDisplay.innerText = callsign;
@@ -67,14 +78,28 @@
     }
   });
 
-  document.getElementById('settings-btn').addEventListener('click', showModal);
+  document.getElementById('change-callsign-btn').addEventListener('click', showModal);
 
-  // ======= WebSocket setup =======
-  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com'); // Replace with your WS endpoint
+  // ===== Settings dropdown =====
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsDropdown = document.getElementById('settings-dropdown');
+
+  settingsBtn.addEventListener('click', () => {
+    settingsDropdown.classList.toggle('hidden');
+  });
+
+  document.getElementById('switch-role-btn').addEventListener('click', () => {
+    localStorage.setItem('role', 'dispatch');
+    window.location.href = 'dispatch.html';
+  });
+
+  // ===== WebSocket =====
+  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com'); // replace with your WS endpoint
 
   socket.addEventListener('open', () => {
-    console.log('Connected to CAD backend WebSocket');
-    // Register officer
+    console.log('Connected to CAD WebSocket');
+
+    // Register officer on connect
     socket.send(JSON.stringify({
       type: 'register',
       callsign: callsign || 'Unknown',
@@ -82,7 +107,7 @@
     }));
   });
 
-  // ======= 10-code button updates =======
+  // ===== 10-code buttons =====
   document.querySelectorAll('.code-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const code = btn.dataset.code;
@@ -99,15 +124,6 @@
     const statusUpdate = { type: 'statusUpdate', callsign: callsign, status: code };
     socket.send(JSON.stringify(statusUpdate));
     console.log('Status sent:', statusUpdate);
-  }
-
-  // Optionally display local log
-  const logList = document.getElementById('log-list');
-  function addLog(msg) {
-    if (!logList) return;
-    const li = document.createElement('li');
-    li.innerText = msg;
-    logList.appendChild(li);
   }
 </script>
 </body>
