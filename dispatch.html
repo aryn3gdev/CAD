@@ -10,43 +10,77 @@
 <!-- Top Navbar -->
 <div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow">
   <h1 class="text-xl font-bold">ERLC Dispatch CAD</h1>
+  <input type="text" id="search-box" placeholder="Search units..." class="rounded px-2 py-1 text-black w-64" />
 </div>
 
-<!-- Units Panel -->
-<div class="p-4" id="units-panel">
-  <h2 class="font-bold mb-2">Units</h2>
-  <ul id="unit-list" class="list-disc ml-5">
-    <!-- Example units -->
-    <!-- On duty -->
-    <li class="font-semibold">Unit 12 - 10-8</li>
-    <li class="font-semibold">Unit 34 - 10-7</li>
-    <!-- Off duty -->
-    <li class="text-gray-500">Unit 56 - Off Duty</li>
-    <li class="text-gray-500">Unit 78 - Off Duty</li>
-  </ul>
+<!-- Units Table -->
+<div class="p-4">
+  <table class="min-w-full bg-white rounded shadow overflow-hidden" id="units-table">
+    <thead class="bg-gray-200">
+      <tr>
+        <th class="py-2 px-4 text-left">Callsign</th>
+        <th class="py-2 px-4 text-left">Discord Name</th>
+        <th class="py-2 px-4 text-left">Discord ID</th>
+        <th class="py-2 px-4 text-left">Status</th>
+      </tr>
+    </thead>
+    <tbody id="unit-list">
+      <!-- Dynamic rows go here -->
+    </tbody>
+  </table>
 </div>
 
 <script>
-  // TODO: dynamically fetch from backend / websocket
-  // Example structure for showing units with status:
+  // Sample units data (replace with real backend data)
   const units = [
-    { callsign: 'Unit 12', status: '10-8', onDuty: true },
-    { callsign: 'Unit 34', status: '10-7', onDuty: true },
-    { callsign: 'Unit 56', status: 'Off Duty', onDuty: false },
-    { callsign: 'Unit 78', status: 'Off Duty', onDuty: false },
+    { callsign: 'Unit 12', discordName: 'ArynGillespie', discordID: '123456789', status: '10-8' },
+    { callsign: 'Unit 34', discordName: 'OfficerSam', discordID: '987654321', status: '10-7' },
+    { callsign: 'Unit 56', discordName: 'UnitBot', discordID: '555555555', status: '10-99' },
+    { callsign: 'Unit 78', discordName: 'OfficerLee', discordID: '444444444', status: '10-11' },
+    { callsign: 'Unit 90', discordName: 'OfficerKay', discordID: '333333333', status: '10-7' },
   ];
 
   const unitList = document.getElementById('unit-list');
-  unitList.innerHTML = '';
 
-  // On duty first
-  units.filter(u => u.onDuty).forEach(u => {
-    unitList.innerHTML += `<li class="font-semibold">${u.callsign} - ${u.status}</li>`;
-  });
+  // Sort function for priority
+  function sortUnits(u) {
+    // Priority order: 10-99 > 10-8 > other > 10-7
+    const status = u.status;
+    if (status === '10-99') return 0;
+    if (status === '10-8') return 1;
+    if (status === '10-7') return 3;
+    return 2; // other codes
+  }
 
-  // Off duty next
-  units.filter(u => !u.onDuty).forEach(u => {
-    unitList.innerHTML += `<li class="text-gray-500">${u.callsign} - ${u.status}</li>`;
+  function renderUnits(search = '') {
+    unitList.innerHTML = '';
+
+    units
+      .filter(u => 
+        u.callsign.toLowerCase().includes(search) ||
+        u.discordName.toLowerCase().includes(search) ||
+        u.discordID.includes(search)
+      )
+      .sort((a,b) => sortUnits(a) - sortUnits(b))
+      .forEach(u => {
+        const row = document.createElement('tr');
+        row.classList.add('border-b', 'hover:bg-gray-100');
+        row.innerHTML = `
+          <td class="py-2 px-4">${u.callsign}</td>
+          <td class="py-2 px-4">${u.discordName}</td>
+          <td class="py-2 px-4">${u.discordID}</td>
+          <td class="py-2 px-4 font-semibold">${u.status}</td>
+        `;
+        unitList.appendChild(row);
+      });
+  }
+
+  // Initial render
+  renderUnits();
+
+  // Search functionality
+  document.getElementById('search-box').addEventListener('input', e => {
+    renderUnits(e.target.value.toLowerCase());
   });
 </script>
 </body>
