@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ERLC CAD - Dispatch</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>ERLC CAD - Dispatch</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans flex flex-col items-center p-4">
 
@@ -44,6 +44,10 @@
 <script>
 const ws = new WebSocket("wss://cad-backend-0ivi.onrender.com");
 
+// Client-side storage for units and calls
+let units = [];
+let calls = [];
+
 // Check login
 const token = localStorage.getItem("token");
 const role = localStorage.getItem("role");
@@ -55,13 +59,18 @@ if (!token || !role || role !== "dispatch") {
 document.getElementById("discord-info").innerText =
   `${localStorage.getItem("discordName")} (${localStorage.getItem("discordID")})`;
 
-// Utilities
+// Sorting utility
 function sortUnits(units) {
-  const order = ["10-99", "10-8", "10-11", "10-80", "10-50", "10-60", "10-7"];
-  return units.sort((a,b) => order.indexOf(a.status) - order.indexOf(b.status));
+  const order = ["10-99","10-8","10-11","10-80","10-50","10-60","10-7"];
+  return units.sort((a,b) => {
+    const aIndex = order.indexOf(a.status) !== -1 ? order.indexOf(a.status) : order.length;
+    const bIndex = order.indexOf(b.status) !== -1 ? order.indexOf(b.status) : order.length;
+    return aIndex - bIndex;
+  });
 }
 
-function renderUnits(units) {
+// Render units table
+function renderUnits() {
   const tbody = document.getElementById("units-table");
   tbody.innerHTML = "";
   sortUnits(units).forEach(u => {
@@ -76,7 +85,8 @@ function renderUnits(units) {
   });
 }
 
-function renderCalls(calls) {
+// Render 911 calls
+function renderCalls() {
   const ul = document.getElementById("calls-list");
   ul.innerHTML = "";
   calls.forEach(c => {
@@ -87,22 +97,28 @@ function renderCalls(calls) {
   });
 }
 
-// WebSocket
+// WebSocket events
 ws.addEventListener("open", () => console.log("Connected to CAD WebSocket"));
 
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data);
+
   if (data.type === "initialData") {
-    renderUnits(data.units);
-    renderCalls(data.calls);
+    // Replace local arrays with backend-provided data
+    units = data.units || [];
+    calls = data.calls || [];
+    renderUnits();
+    renderCalls();
+
   } else if (data.type === "statusUpdate") {
     const idx = units.findIndex(u => u.callsign === data.callsign);
     if (idx >= 0) units[idx] = data;
     else units.push(data);
-    renderUnits(units);
+    renderUnits();
+
   } else if (data.type === "911Call") {
     calls.push(data);
-    renderCalls(calls);
+    renderCalls();
   }
 });
 
