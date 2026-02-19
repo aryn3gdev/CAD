@@ -1,135 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>ERLC CAD - Dispatch</title>
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <title>ERLC CAD - Dispatch</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans flex flex-col items-center p-4">
+<body class="bg-gray-100 font-sans">
 
-<div class="w-full max-w-5xl">
-  <div class="flex justify-between items-center mb-4">
-    <h1 class="text-2xl font-bold text-blue-700">Dispatch Dashboard</h1>
-    <div>
-      <span id="discord-info" class="mr-4 font-medium"></span>
-      <select id="settings-dropdown" class="border rounded p-1">
-        <option value="switchRole">Switch Role</option>
-        <option value="changeCallsign" disabled>Change Callsign</option>
-      </select>
+<!-- Navbar -->
+<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow relative">
+  <h1 class="text-xl font-bold">ERLC Dispatch CAD</h1>
+  
+  <!-- Settings dropdown -->
+  <div class="relative">
+    <button id="settings-btn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Settings ▾</button>
+    <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded shadow-lg text-black z-50">
+      <button class="w-full text-left px-4 py-2 text-gray-400 cursor-not-allowed" disabled>Change Callsign</button>
+      <button id="switch-role-btn" class="w-full text-left px-4 py-2 hover:bg-gray-200">Switch Role</button>
     </div>
   </div>
 
-  <!-- Units table -->
-  <div class="overflow-x-auto mb-6">
-    <table class="min-w-full bg-white rounded shadow">
-      <thead>
-        <tr class="bg-blue-600 text-white">
-          <th class="px-4 py-2">Callsign</th>
-          <th class="px-4 py-2">Discord Name</th>
-          <th class="px-4 py-2">Discord ID</th>
-          <th class="px-4 py-2">Status</th>
-        </tr>
-      </thead>
-      <tbody id="units-table" class="text-center"></tbody>
-    </table>
-  </div>
+  <input type="text" id="search-box" placeholder="Search units..." class="rounded px-2 py-1 text-black w-64 ml-4" />
+</div>
 
-  <!-- 911 calls -->
-  <div>
-    <h2 class="text-xl font-bold mb-2">911 Calls</h2>
-    <ul id="calls-list" class="bg-white rounded shadow p-2 max-h-64 overflow-y-auto"></ul>
-  </div>
+<!-- Units Table -->
+<div class="p-4 mb-6">
+  <h2 class="font-bold mb-2 text-lg">Units</h2>
+  <table class="min-w-full bg-white rounded shadow overflow-hidden">
+    <thead class="bg-gray-200">
+      <tr>
+        <th class="py-2 px-4 text-left">Callsign</th>
+        <th class="py-2 px-4 text-left">Discord Name</th>
+        <th class="py-2 px-4 text-left">Discord ID</th>
+        <th class="py-2 px-4 text-left">Status</th>
+      </tr>
+    </thead>
+    <tbody id="unit-list">
+      <!-- Live rows inserted here -->
+    </tbody>
+  </table>
+</div>
+
+<!-- 911 Calls Panel -->
+<div class="p-4">
+  <h2 class="font-bold mb-2 text-lg">911 Calls</h2>
+  <table class="min-w-full bg-white rounded shadow overflow-hidden">
+    <thead class="bg-red-200">
+      <tr>
+        <th class="py-2 px-4 text-left">Call ID</th>
+        <th class="py-2 px-4 text-left">Caller</th>
+        <th class="py-2 px-4 text-left">Info / Location</th>
+        <th class="py-2 px-4 text-left">Status</th>
+        <th class="py-2 px-4 text-left">Timestamp</th>
+      </tr>
+    </thead>
+    <tbody id="calls-list">
+      <!-- Incoming calls will appear here -->
+    </tbody>
+  </table>
 </div>
 
 <script>
-const ws = new WebSocket("wss://cad-backend-0ivi.onrender.com");
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
-// Client-side storage for units and calls
-let units = [];
-let calls = [];
-
-// Check login
-const token = localStorage.getItem("token");
-const role = localStorage.getItem("role");
-if (!token || !role || role !== "dispatch") {
-  window.location.href = "index.html";
-}
-
-// Show Discord info
-document.getElementById("discord-info").innerText =
-  `${localStorage.getItem("discordName")} (${localStorage.getItem("discordID")})`;
-
-// Sorting utility
-function sortUnits(units) {
-  const order = ["10-99","10-8","10-11","10-80","10-50","10-60","10-7"];
-  return units.sort((a,b) => {
-    const aIndex = order.indexOf(a.status) !== -1 ? order.indexOf(a.status) : order.length;
-    const bIndex = order.indexOf(b.status) !== -1 ? order.indexOf(b.status) : order.length;
-    return aIndex - bIndex;
-  });
-}
-
-// Render units table
-function renderUnits() {
-  const tbody = document.getElementById("units-table");
-  tbody.innerHTML = "";
-  sortUnits(units).forEach(u => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="px-4 py-2">${u.callsign}</td>
-      <td class="px-4 py-2">${u.discordName}</td>
-      <td class="px-4 py-2">${u.discordID}</td>
-      <td class="px-4 py-2 font-bold ${u.status==="10-99"?"text-red-600":u.status==="10-8"?"text-green-600":"text-gray-800"}">${u.status}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-// Render 911 calls
-function renderCalls() {
-  const ul = document.getElementById("calls-list");
-  ul.innerHTML = "";
-  calls.forEach(c => {
-    const li = document.createElement("li");
-    li.className = "border-b p-2";
-    li.textContent = `[${c.timestamp}] ${c.caller}: ${c.info} (${c.status})`;
-    ul.appendChild(li);
-  });
-}
-
-// WebSocket events
-ws.addEventListener("open", () => console.log("Connected to CAD WebSocket"));
-
-ws.addEventListener("message", (event) => {
-  const data = JSON.parse(event.data);
-
-  if (data.type === "initialData") {
-    // Replace local arrays with backend-provided data
-    units = data.units || [];
-    calls = data.calls || [];
-    renderUnits();
-    renderCalls();
-
-  } else if (data.type === "statusUpdate") {
-    const idx = units.findIndex(u => u.callsign === data.callsign);
-    if (idx >= 0) units[idx] = data;
-    else units.push(data);
-    renderUnits();
-
-  } else if (data.type === "911Call") {
-    calls.push(data);
-    renderCalls();
-  }
-});
-
-// Settings dropdown
-document.getElementById("settings-dropdown").addEventListener("change", (e) => {
-  if (e.target.value === "switchRole") {
-    localStorage.removeItem("role");
-    localStorage.removeItem("token");
+  // Redirect if not logged in
+  if (!token || !role) {
     window.location.href = "index.html";
   }
-});
+
+  
+  // ===== Settings dropdown =====
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsDropdown = document.getElementById('settings-dropdown');
+
+  settingsBtn.addEventListener('click', () => {
+    settingsDropdown.classList.toggle('hidden');
+  });
+
+  document.getElementById('switch-role-btn').addEventListener('click', () => {
+    localStorage.setItem('role', 'officer');
+    window.location.href = 'officer.html';
+  });
+
+  // ===== Units Table =====
+  const unitList = document.getElementById('unit-list');
+  let units = []; // live units
+
+  document.getElementById('search-box').addEventListener('input', e => {
+    renderUnits(e.target.value.toLowerCase());
+  });
+
+  function sortPriority(u) {
+    if (u.status === '10-99') return 0;
+    if (u.status === '10-8') return 1;
+    if (['10-11','10-80','10-50','10-99A'].includes(u.status)) return 2;
+    if (u.status === '10-7') return 3;
+    return 4;
+  }
+
+  function renderUnits(search = '') {
+    unitList.innerHTML = '';
+    units
+      .filter(u => 
+        u.callsign.toLowerCase().includes(search) ||
+        u.discordName.toLowerCase().includes(search) ||
+        u.discordID.includes(search)
+      )
+      .sort((a,b) => sortPriority(a)-sortPriority(b))
+      .forEach(u => {
+        const row = document.createElement('tr');
+        row.classList.add('border-b', 'hover:bg-gray-100');
+        row.innerHTML = `
+          <td class="py-2 px-4">${u.callsign}</td>
+          <td class="py-2 px-4">${u.discordName || 'Unknown'}</td>
+          <td class="py-2 px-4">${u.discordID || 'Unknown'}</td>
+          <td class="py-2 px-4 font-semibold">${u.status}</td>
+        `;
+        unitList.appendChild(row);
+      });
+  }
+
+  // ===== 911 Calls Table =====
+  const callsList = document.getElementById('calls-list');
+  let calls = [];
+
+  function renderCalls() {
+    callsList.innerHTML = '';
+    calls.forEach(c => {
+      const row = document.createElement('tr');
+      row.classList.add('border-b', 'hover:bg-gray-50');
+      row.innerHTML = `
+        <td class="py-2 px-4">${c.id}</td>
+        <td class="py-2 px-4">${c.caller}</td>
+        <td class="py-2 px-4">${c.info}</td>
+        <td class="py-2 px-4 font-semibold">${c.status}</td>
+        <td class="py-2 px-4">${c.timestamp}</td>
+      `;
+      callsList.appendChild(row);
+    });
+  }
+
+  // ===== WebSocket =====
+  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com');
+
+  socket.addEventListener('open', () => console.log('Dispatch connected to WS'));
+
+  socket.addEventListener('message', e => {
+    const msg = JSON.parse(e.data);
+
+    // Unit updates
+    if (msg.type === 'statusUpdate') {
+      const idx = units.findIndex(u => u.callsign === msg.callsign);
+      if (idx >= 0) units[idx] = msg;
+      else units.push(msg);
+      renderUnits(document.getElementById('search-box').value.toLowerCase());
+    }
+
+    // 911 calls
+    if (msg.type === '911Call') {
+      calls.push(msg);
+      renderCalls();
+    }
+  });
 </script>
 </body>
 </html>
