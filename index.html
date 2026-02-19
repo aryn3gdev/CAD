@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>OKSRP CAD</title>
+  <title>ERLC CAD</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -14,7 +14,6 @@
       font-family: Arial, sans-serif;
       color: white;
     }
-
     .card {
       background: rgba(0,0,0,0.7);
       padding: 40px;
@@ -23,17 +22,8 @@
       width: 350px;
       box-shadow: 0 0 25px rgba(0,0,0,0.6);
     }
-
-    h1 {
-      margin-bottom: 10px;
-      letter-spacing: 2px;
-    }
-
-    p {
-      opacity: 0.8;
-      margin-bottom: 30px;
-    }
-
+    h1 { margin-bottom: 10px; letter-spacing: 2px; }
+    p { opacity: 0.8; margin-bottom: 30px; }
     button {
       width: 100%;
       padding: 15px;
@@ -45,35 +35,25 @@
       color: white;
       transition: 0.2s ease;
     }
-
-    button:hover {
-      background: #4752C4;
-    }
-
-    .status {
-      margin-top: 20px;
-      font-size: 14px;
-      opacity: 0.8;
-    }
+    button:hover { background: #4752C4; }
+    .status { margin-top: 20px; font-size: 14px; opacity: 0.8; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1>ERLC CAD</h1>
-    <p>Secure Whitelisted Access</p>
-
-    <button onclick="login()">Login with Discord</button>
-
-    <div class="status" id="status"></div>
-  </div>
+<div class="card">
+  <h1>ERLC CAD</h1>
+  <p>Secure Whitelisted Access</p>
+  <button onclick="login()">Login with Discord</button>
+  <div class="status" id="status"></div>
+</div>
 
 <script>
-  const backend = "https://cad-backend-0ivi.onrender.com";
+  const backend = "https://YOUR-RENDER-URL.onrender.com";
 
   function login() {
     const clientId = "1471224271148810439";
-    const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/");
+    const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/index.html");
     const scope = "identify guilds guilds.members.read";
 
     window.location.href =
@@ -83,28 +63,34 @@
   async function handleLogin() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-
     if (!code) return;
 
     document.getElementById("status").innerText = "Authenticating...";
 
-    const res = await fetch(`${backend}/auth`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code })
-    });
+    try {
+      const res = await fetch(`${backend}/auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
+      });
 
-    const data = await res.json();
+      const data = await res.json();
+      if (!data.allowed) {
+        document.getElementById("status").innerText = "Access Denied.";
+        return;
+      }
 
-    if (!data.allowed) {
-      document.getElementById("status").innerText = "Access Denied.";
-      return;
-    }
+      // Save role + token
+      localStorage.setItem("role", data.dispatch ? "dispatch" : "officer");
+      localStorage.setItem("token", "loggedin"); // simple placeholder token
 
-    if (data.dispatch) {
-      window.location.href = "/CAD/dispatch.html";
-    } else {
-      window.location.href = "/CAD/officer.html";
+      // Redirect to proper dashboard
+      if (data.dispatch) window.location.href = "dispatch.html";
+      else window.location.href = "officer.html";
+
+    } catch (err) {
+      document.getElementById("status").innerText = "Login failed.";
+      console.error(err);
     }
   }
 
