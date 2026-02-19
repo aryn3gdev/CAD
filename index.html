@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ERLC Radio</title>
+  <title>ERLC CAD Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -9,67 +9,40 @@
       color: white;
       font-family: Arial;
       text-align: center;
-      margin-top: 50px;
-    }
-
-    .radio {
-      background: #222;
-      padding: 20px;
-      border-radius: 15px;
-      display: inline-block;
-      width: 300px;
-    }
-
-    select, input {
-      width: 90%;
-      padding: 8px;
-      margin: 10px 0;
-      border-radius: 5px;
-      border: none;
+      margin-top: 100px;
     }
 
     button {
-      width: 90%;
-      padding: 15px;
-      background: red;
-      border: none;
-      border-radius: 10px;
+      padding: 15px 30px;
       font-size: 18px;
-      color: white;
+      border-radius: 8px;
+      border: none;
       cursor: pointer;
+      background: #5865F2;
+      color: white;
     }
 
-    button:active {
-      background: darkred;
+    button:hover {
+      background: #4752C4;
     }
   </style>
 </head>
 <body>
 
-  <div class="radio">
-    <h2>ERLC RADIO</h2>
+  <h1>ERLC CAD</h1>
+  <p>Secure Login Required</p>
 
-    <input id="callsign" placeholder="Enter Callsign (1A-21)" />
-
-    <select id="channel">
-      <option value="leo-main">LEO Main</option>
-      <option value="fire-main">Fire Main</option>
-      <option value="dot-main">DOT</option>
-    </select>
-
-    <button id="ptt">Hold To Talk</button>
-  </div>
+  <button onclick="login()">Login with Discord</button>
 
   <script>
-    const button = document.getElementById("ptt");
+    function login() {
+      const clientId = "1471224271148810439";
+      const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/");
+      const scope = "identify guilds guilds.members.read";
 
-    button.addEventListener("mousedown", () => {
-      console.log("Talking...");
-    });
-
-    button.addEventListener("mouseup", () => {
-      console.log("Stopped Talking");
-    });
+      window.location.href =
+        `https://discord.com/api/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirect}&scope=${encodeURIComponent(scope)}`;
+    }
   </script>
 
 </body>
