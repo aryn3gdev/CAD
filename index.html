@@ -1,111 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>OKSRP CAD</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: Arial, sans-serif;
-      color: white;
-    }
-    .card {
-      background: rgba(0,0,0,0.7);
-      padding: 40px;
-      border-radius: 15px;
-      text-align: center;
-      width: 350px;
-      box-shadow: 0 0 25px rgba(0,0,0,0.6);
-    }
-    h1 { margin-bottom: 10px; letter-spacing: 2px; }
-    p { opacity: 0.8; margin-bottom: 30px; }
-    button {
-      width: 100%;
-      padding: 15px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: #5865F2;
-      color: white;
-      transition: 0.2s ease;
-    }
-    button:hover { background: #4752C4; }
-    .status { margin-top: 20px; font-size: 14px; opacity: 0.8; }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 flex items-center justify-center h-screen font-sans">
 
-<div class="card">
-  <h1>OKSRP CAD LOGIN</h1>
-  <p>Whitelisted access only.</p>
-  <button onclick="login()">Login with Discord</button>
-  <div class="status" id="status"></div>
+<div class="bg-white rounded-xl shadow-lg p-8 w-96 text-center">
+  <h1 class="text-2xl font-bold mb-6 text-blue-700">CAD Login</h1>
+  <p class="text-gray-600 mb-6">Please login with Discord to access the CAD dashboard.</p>
+
+  <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full">
+    Login with Discord
+  </button>
+
+  <p id="status" class="mt-4 text-red-500 font-semibold"></p>
 </div>
 
 <script>
-  const backend = "https://cad-backend-0ivi.onrender.com";
+const backend = "https://cad-backend-0ivi.onrender.com";
+const clientId = "1471224271148810439";
+const redirectUri = encodeURIComponent("https://aryn3gdev.github.io/CAD/index.html");
+const scope = encodeURIComponent("identify guilds guilds.members.read");
 
-  // Trigger Discord OAuth login
-  function login() {
-    const clientId = "1471224271148810439";
-    const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/index.html");
-    const scope = "identify guilds guilds.members.read";
+// Check if already logged in
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+if (token && role) {
+  // Redirect to proper dashboard automatically
+  window.location.href = role === "dispatch" ? "dispatch.html" : "officer.html";
+}
 
-    window.location.href =
-      `https://discord.com/api/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirect}&scope=${encodeURIComponent(scope)}`;
-  }
+// Login button
+document.getElementById("login-btn").addEventListener("click", () => {
+  window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=${scope}`;
+});
 
-  // Handle redirect after Discord OAuth
-  async function handleLogin() {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
+// Handle Discord OAuth redirect
+async function handleLogin() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return;
 
-    if (!code) {
-      console.log("No code found in URL, user not logging in yet.");
+  document.getElementById("status").innerText = "Authenticating...";
+
+  try {
+    const res = await fetch(`${backend}/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
+
+    const data = await res.json();
+
+    if (!data.allowed) {
+      document.getElementById("status").innerText = "Access Denied.";
       return;
     }
 
-    const statusEl = document.getElementById("status");
-    if (statusEl) statusEl.innerText = "Authenticating...";
+    // Save token + role + discord info
+    localStorage.setItem("token", "loggedin"); // simple placeholder
+    localStorage.setItem("role", data.dispatch ? "dispatch" : "officer");
+    localStorage.setItem("discordName", data.discordName || "Unknown");
+    localStorage.setItem("discordID", data.discordID || "Unknown");
 
-    try {
-      const res = await fetch(`${backend}/auth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
-      });
+    // Redirect
+    if (data.dispatch) window.location.href = "dispatch.html";
+    else window.location.href = "officer.html";
 
-      const data = await res.json();
-      console.log("Backend response:", data); // DEBUG LOG
-
-      if (!data.allowed) {
-        if (statusEl) statusEl.innerText = "Access Denied.";
-        return;
-      }
-
-      // Save role + token
-      localStorage.setItem("role", data.dispatch ? "dispatch" : "officer");
-      localStorage.setItem("token", "loggedin"); // placeholder
-
-      // Redirect to proper dashboard
-      if (data.dispatch) window.location.href = "dispatch.html";
-      else window.location.href = "officer.html";
-
-    } catch (err) {
-      if (statusEl) statusEl.innerText = "Login failed.";
-      console.error("Error during login:", err);
-    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById("status").innerText = "Login failed. Please try again.";
   }
+}
 
-  // Run on page load
-  window.addEventListener("DOMContentLoaded", handleLogin);
+// Run on page load
+handleLogin();
 </script>
-
 </body>
 </html>
