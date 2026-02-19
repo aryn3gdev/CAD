@@ -1,49 +1,115 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ERLC CAD Login</title>
+  <title>ERLC CAD</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      background: #111;
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
       color: white;
-      font-family: Arial;
+    }
+
+    .card {
+      background: rgba(0,0,0,0.7);
+      padding: 40px;
+      border-radius: 15px;
       text-align: center;
-      margin-top: 100px;
+      width: 350px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.6);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    p {
+      opacity: 0.8;
+      margin-bottom: 30px;
     }
 
     button {
-      padding: 15px 30px;
-      font-size: 18px;
+      width: 100%;
+      padding: 15px;
+      font-size: 16px;
       border-radius: 8px;
       border: none;
       cursor: pointer;
       background: #5865F2;
       color: white;
+      transition: 0.2s ease;
     }
 
     button:hover {
       background: #4752C4;
     }
+
+    .status {
+      margin-top: 20px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
 
-  <h1>ERLC CAD</h1>
-  <p>Secure Login Required</p>
+  <div class="card">
+    <h1>ERLC CAD</h1>
+    <p>Secure Whitelisted Access</p>
 
-  <button onclick="login()">Login with Discord</button>
+    <button onclick="login()">Login with Discord</button>
 
-  <script>
-    function login() {
-      const clientId = "1471224271148810439";
-      const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/");
-      const scope = "identify guilds guilds.members.read";
+    <div class="status" id="status"></div>
+  </div>
 
-      window.location.href =
-        `https://discord.com/api/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirect}&scope=${encodeURIComponent(scope)}`;
+<script>
+  const backend = "https://YOUR-RENDER-URL.onrender.com";
+
+  function login() {
+    const clientId = "1471224271148810439";
+    const redirect = encodeURIComponent("https://aryn3gdev.github.io/CAD/");
+    const scope = "identify guilds guilds.members.read";
+
+    window.location.href =
+      `https://discord.com/api/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirect}&scope=${encodeURIComponent(scope)}`;
+  }
+
+  async function handleLogin() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (!code) return;
+
+    document.getElementById("status").innerText = "Authenticating...";
+
+    const res = await fetch(`${backend}/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
+
+    const data = await res.json();
+
+    if (!data.allowed) {
+      document.getElementById("status").innerText = "Access Denied.";
+      return;
     }
-  </script>
+
+    if (data.dispatch) {
+      window.location.href = "/CAD/dispatch.html";
+    } else {
+      window.location.href = "/CAD/officer.html";
+    }
+  }
+
+  handleLogin();
+</script>
 
 </body>
 </html>
