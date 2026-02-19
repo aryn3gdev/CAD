@@ -1,63 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Officer Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial, sans-serif; background: #111; color: white; padding: 20px; }
-    h1 { color: #5865F2; }
-    button { margin: 5px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; background: #5865F2; color: white; }
-    button:hover { background: #4752C4; }
-    #status-log { margin-top: 20px; max-height: 200px; overflow-y: auto; background: #222; padding: 10px; border-radius: 5px; }
-  </style>
+  <meta charset="UTF-8">
+  <title>ERLC CAD - Officer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 font-sans">
 
-<h1>Officer Dashboard</h1>
-
-<div>
-  <button onclick="sendStatus('10-8')">10-8 (Available)</button>
-  <button onclick="sendStatus('10-7')">10-7 (Out of Service)</button>
-  <button onclick="sendStatus('10-23')">10-23 (On Scene)</button>
-  <button onclick="sendPanic()">🚨 Panic</button>
+<!-- Top Navbar -->
+<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow">
+  <h1 class="text-xl font-bold">ERLC Officer CAD</h1>
+  <div class="flex items-center space-x-4">
+    <span id="callsign-display" class="font-semibold"></span>
+    <button id="settings-btn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Settings</button>
+  </div>
 </div>
 
-<div id="status-log"></div>
+<!-- Callsign Modal -->
+<div id="callsign-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded p-6 w-80 shadow">
+    <h2 class="text-lg font-bold mb-4">Enter your Callsign</h2>
+    <input id="callsign-input" type="text" placeholder="e.g. Unit 12" class="border p-2 w-full rounded mb-4"/>
+    <button id="callsign-submit" class="bg-blue-700 text-white px-4 py-2 rounded w-full">Save</button>
+  </div>
+</div>
+
+<!-- Status / 10-code buttons -->
+<div class="p-4 grid grid-cols-5 gap-3">
+  <button class="code-btn bg-green-500 text-white font-bold py-2 rounded" data-code="10-8">10-8</button>
+  <button class="code-btn bg-red-500 text-white font-bold py-2 rounded" data-code="10-7">10-7</button>
+  <button class="code-btn bg-yellow-500 text-white font-bold py-2 rounded" data-code="10-11">10-11</button>
+  <button class="code-btn bg-pink-600 text-white font-bold py-2 rounded" data-code="10-99">10-99 (Panic)</button>
+  <button class="code-btn bg-purple-500 text-white font-bold py-2 rounded" data-code="10-80">10-80</button>
+</div>
+
+<!-- Dropdown for additional codes -->
+<div class="p-4">
+  <label for="other-codes" class="font-semibold mb-2 block">Other Codes:</label>
+  <select id="other-codes" class="border p-2 rounded w-full">
+    <option value="">Select Code</option>
+    <option value="10-50">10-50</option>
+    <option value="10-99A">10-99A</option>
+    <!-- Add more here -->
+  </select>
+</div>
+
+<!-- Placeholder for log/status messages -->
+<div class="p-4" id="log-panel">
+  <h2 class="font-bold mb-2">Status Log</h2>
+  <ul id="log-list" class="list-disc ml-5"></ul>
+</div>
 
 <script>
-  const backend = "https://YOUR-RENDER-URL.onrender.com";
-  const callsign = "1A-21"; // placeholder, later can allow user to set
+  // Callsign handling
+  const modal = document.getElementById('callsign-modal');
+  const callsignDisplay = document.getElementById('callsign-display');
 
-  // Protect page
-  const role = localStorage.getItem("role");
-  const token = localStorage.getItem("token");
-  if (!token || role !== "officer") window.location.href = "index.html";
+  function showModal() { modal.classList.remove('hidden'); }
+  function hideModal() { modal.classList.add('hidden'); }
 
-  const logDiv = document.getElementById("status-log");
+  // First time visit
+  let callsign = localStorage.getItem('callsign');
+  if (!callsign) showModal();
+  else callsignDisplay.innerText = callsign;
 
-  async function sendStatus(status) {
-    try {
-      await fetch(`${backend}/status`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({callsign, status})
-      });
-      logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()} — ${status}</div>`;
-    } catch (err) { console.error(err); }
-  }
+  document.getElementById('callsign-submit').addEventListener('click', () => {
+    const val = document.getElementById('callsign-input').value.trim();
+    if (val) {
+      localStorage.setItem('callsign', val);
+      callsignDisplay.innerText = val;
+      hideModal();
+    }
+  });
 
-  async function sendPanic() {
-    try {
-      await fetch(`${backend}/panic`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({callsign})
-      });
-      logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()} — 🚨 PANIC</div>`;
-      new Audio("https://freesound.org/data/previews/522/522966_5121236-lq.mp3").play(); // example panic sound
-    } catch (err) { console.error(err); }
-  }
+  // Settings button
+  document.getElementById('settings-btn').addEventListener('click', showModal);
+
+  // 10-code buttons
+  const logList = document.getElementById('log-list');
+  document.querySelectorAll('.code-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const code = btn.dataset.code;
+      logList.innerHTML += `<li>${callsign || 'Unknown'} set status: ${code}</li>`;
+      // TODO: send to backend for dispatch
+    });
+  });
+
+  // Dropdown
+  document.getElementById('other-codes').addEventListener('change', e => {
+    const code = e.target.value;
+    if (code) logList.innerHTML += `<li>${callsign || 'Unknown'} set status: ${code}</li>`;
+  });
 </script>
-
 </body>
 </html>
