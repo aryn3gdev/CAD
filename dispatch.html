@@ -8,9 +8,19 @@
 <body class="bg-gray-100 font-sans">
 
 <!-- Navbar -->
-<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow">
+<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow relative">
   <h1 class="text-xl font-bold">ERLC Dispatch CAD</h1>
-  <input type="text" id="search-box" placeholder="Search units..." class="rounded px-2 py-1 text-black w-64" />
+  
+  <!-- Settings dropdown -->
+  <div class="relative">
+    <button id="settings-btn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Settings ▾</button>
+    <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded shadow-lg text-black z-50">
+      <button class="w-full text-left px-4 py-2 text-gray-400 cursor-not-allowed" disabled>Change Callsign</button>
+      <button id="switch-role-btn" class="w-full text-left px-4 py-2 hover:bg-gray-200">Switch Role</button>
+    </div>
+  </div>
+
+  <input type="text" id="search-box" placeholder="Search units..." class="rounded px-2 py-1 text-black w-64 ml-4" />
 </div>
 
 <!-- Units Table -->
@@ -51,6 +61,19 @@
 </div>
 
 <script>
+  // ===== Settings dropdown =====
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsDropdown = document.getElementById('settings-dropdown');
+
+  settingsBtn.addEventListener('click', () => {
+    settingsDropdown.classList.toggle('hidden');
+  });
+
+  document.getElementById('switch-role-btn').addEventListener('click', () => {
+    localStorage.setItem('role', 'officer');
+    window.location.href = 'officer.html';
+  });
+
   // ===== Units Table =====
   const unitList = document.getElementById('unit-list');
   let units = []; // live units
@@ -91,7 +114,7 @@
 
   // ===== 911 Calls Table =====
   const callsList = document.getElementById('calls-list');
-  let calls = []; // live 911 calls
+  let calls = [];
 
   function renderCalls() {
     callsList.innerHTML = '';
@@ -109,15 +132,15 @@
     });
   }
 
-  // ===== WebSocket for live updates =====
-  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com'); // replace with your WS
+  // ===== WebSocket =====
+  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com');
 
-  socket.addEventListener('open', () => console.log('Dispatch connected to WebSocket'));
+  socket.addEventListener('open', () => console.log('Dispatch connected to WS'));
 
   socket.addEventListener('message', e => {
     const msg = JSON.parse(e.data);
 
-    // Unit status updates
+    // Unit updates
     if (msg.type === 'statusUpdate') {
       const idx = units.findIndex(u => u.callsign === msg.callsign);
       if (idx >= 0) units[idx] = msg;
@@ -125,13 +148,11 @@
       renderUnits(document.getElementById('search-box').value.toLowerCase());
     }
 
-    // Incoming 911 calls
+    // 911 calls
     if (msg.type === '911Call') {
       calls.push(msg);
       renderCalls();
     }
-
-    // Optionally, implement status change for 911 (Responding / Closed) via buttons later
   });
 </script>
 </body>
