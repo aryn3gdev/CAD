@@ -7,7 +7,7 @@
 </head>
 <body class="bg-gray-100 font-sans">
 
-<!-- Top Navbar -->
+<!-- Navbar -->
 <div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow">
   <h1 class="text-xl font-bold">ERLC Officer CAD</h1>
   <div class="flex items-center space-x-4">
@@ -34,7 +34,7 @@
   <button class="code-btn bg-purple-500 text-white font-bold py-2 rounded" data-code="10-80">10-80</button>
 </div>
 
-<!-- Dropdown for additional codes -->
+<!-- Dropdown for other codes -->
 <div class="p-4">
   <label for="other-codes" class="font-semibold mb-2 block">Other Codes:</label>
   <select id="other-codes" class="border p-2 rounded w-full">
@@ -45,14 +45,8 @@
   </select>
 </div>
 
-<!-- Placeholder for log/status messages -->
-<div class="p-4" id="log-panel">
-  <h2 class="font-bold mb-2">Status Log</h2>
-  <ul id="log-list" class="list-disc ml-5"></ul>
-</div>
-
 <script>
-  // Callsign handling
+  // ======= Callsign handling =======
   const modal = document.getElementById('callsign-modal');
   const callsignDisplay = document.getElementById('callsign-display');
 
@@ -73,24 +67,48 @@
     }
   });
 
-  // Settings button
   document.getElementById('settings-btn').addEventListener('click', showModal);
 
-  // 10-code buttons
-  const logList = document.getElementById('log-list');
+  // ======= WebSocket setup =======
+  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com'); // Replace with your WS endpoint
+
+  socket.addEventListener('open', () => {
+    console.log('Connected to CAD backend WebSocket');
+    // Register officer
+    socket.send(JSON.stringify({
+      type: 'register',
+      callsign: callsign || 'Unknown',
+      status: '10-8'
+    }));
+  });
+
+  // ======= 10-code button updates =======
   document.querySelectorAll('.code-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const code = btn.dataset.code;
-      logList.innerHTML += `<li>${callsign || 'Unknown'} set status: ${code}</li>`;
-      // TODO: send to backend for dispatch
+      updateStatus(code);
     });
   });
 
-  // Dropdown
   document.getElementById('other-codes').addEventListener('change', e => {
     const code = e.target.value;
-    if (code) logList.innerHTML += `<li>${callsign || 'Unknown'} set status: ${code}</li>`;
+    if (code) updateStatus(code);
   });
+
+  function updateStatus(code) {
+    const statusUpdate = { type: 'statusUpdate', callsign: callsign, status: code };
+    socket.send(JSON.stringify(statusUpdate));
+    console.log('Status sent:', statusUpdate);
+  }
+
+  // Optionally display local log
+  const logList = document.getElementById('log-list');
+  function addLog(msg) {
+    if (!logList) return;
+    const li = document.createElement('li');
+    li.innerText = msg;
+    logList.appendChild(li);
+  }
 </script>
 </body>
 </html>
