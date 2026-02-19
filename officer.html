@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Officer Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: white; padding: 20px; }
+    h1 { color: #5865F2; }
+    button { margin: 5px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; background: #5865F2; color: white; }
+    button:hover { background: #4752C4; }
+    #status-log { margin-top: 20px; max-height: 200px; overflow-y: auto; background: #222; padding: 10px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+
+<h1>Officer Dashboard</h1>
+
+<div>
+  <button onclick="sendStatus('10-8')">10-8 (Available)</button>
+  <button onclick="sendStatus('10-7')">10-7 (Out of Service)</button>
+  <button onclick="sendStatus('10-23')">10-23 (On Scene)</button>
+  <button onclick="sendPanic()">🚨 Panic</button>
+</div>
+
+<div id="status-log"></div>
+
+<script>
+  const backend = "https://YOUR-RENDER-URL.onrender.com";
+  const callsign = "1A-21"; // placeholder, later can allow user to set
+
+  // Protect page
+  const role = localStorage.getItem("role");
+  const token = localStorage.getItem("token");
+  if (!token || role !== "officer") window.location.href = "index.html";
+
+  const logDiv = document.getElementById("status-log");
+
+  async function sendStatus(status) {
+    try {
+      await fetch(`${backend}/status`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({callsign, status})
+      });
+      logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()} — ${status}</div>`;
+    } catch (err) { console.error(err); }
+  }
+
+  async function sendPanic() {
+    try {
+      await fetch(`${backend}/panic`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({callsign})
+      });
+      logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()} — 🚨 PANIC</div>`;
+      new Audio("https://freesound.org/data/previews/522/522966_5121236-lq.mp3").play(); // example panic sound
+    } catch (err) { console.error(err); }
+  }
+</script>
+
+</body>
+</html>
