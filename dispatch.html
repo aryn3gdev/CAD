@@ -1,57 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Dispatch Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial, sans-serif; background: #111; color: white; padding: 20px; }
-    h1 { color: #FF5555; }
-    #units, #logs { margin-top: 20px; padding: 10px; background: #222; border-radius: 5px; max-height: 300px; overflow-y: auto; }
-  </style>
+  <meta charset="UTF-8">
+  <title>ERLC CAD - Dispatch</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 font-sans">
 
-<h1>Dispatch Dashboard</h1>
-
-<div id="units">
-  <strong>Live Units:</strong>
-  <div id="unit-list"></div>
+<!-- Top Navbar -->
+<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow">
+  <h1 class="text-xl font-bold">ERLC Dispatch CAD</h1>
 </div>
 
-<div id="logs">
-  <strong>Activity Logs:</strong>
-  <div id="log-list"></div>
+<!-- Units Panel -->
+<div class="p-4" id="units-panel">
+  <h2 class="font-bold mb-2">Units</h2>
+  <ul id="unit-list" class="list-disc ml-5">
+    <!-- Example units -->
+    <!-- On duty -->
+    <li class="font-semibold">Unit 12 - 10-8</li>
+    <li class="font-semibold">Unit 34 - 10-7</li>
+    <!-- Off duty -->
+    <li class="text-gray-500">Unit 56 - Off Duty</li>
+    <li class="text-gray-500">Unit 78 - Off Duty</li>
+  </ul>
 </div>
 
 <script>
-  const backend = "https://YOUR-RENDER-URL.onrender.com";
+  // TODO: dynamically fetch from backend / websocket
+  // Example structure for showing units with status:
+  const units = [
+    { callsign: 'Unit 12', status: '10-8', onDuty: true },
+    { callsign: 'Unit 34', status: '10-7', onDuty: true },
+    { callsign: 'Unit 56', status: 'Off Duty', onDuty: false },
+    { callsign: 'Unit 78', status: 'Off Duty', onDuty: false },
+  ];
 
-  // Protect page
-  const role = localStorage.getItem("role");
-  const token = localStorage.getItem("token");
-  if (!token || role !== "dispatch") window.location.href = "index.html";
+  const unitList = document.getElementById('unit-list');
+  unitList.innerHTML = '';
 
-  const unitList = document.getElementById("unit-list");
-  const logList = document.getElementById("log-list");
+  // On duty first
+  units.filter(u => u.onDuty).forEach(u => {
+    unitList.innerHTML += `<li class="font-semibold">${u.callsign} - ${u.status}</li>`;
+  });
 
-  async function update() {
-    try {
-      const units = await (await fetch(`${backend}/units`)).json();
-      const logs = await (await fetch(`${backend}/logs`)).json();
-
-      unitList.innerHTML = "";
-      units.forEach(u => { unitList.innerHTML += `<div>${u.callsign} — ${u.status}</div>`; });
-
-      logList.innerHTML = "";
-      logs.forEach(l => { logList.innerHTML += `<div>${new Date(l.time).toLocaleTimeString()} — ${l.message}</div>`; });
-
-    } catch (err) { console.error(err); }
-  }
-
-  // Refresh every 3 seconds
-  setInterval(update, 3000);
-  update();
+  // Off duty next
+  units.filter(u => !u.onDuty).forEach(u => {
+    unitList.innerHTML += `<li class="text-gray-500">${u.callsign} - ${u.status}</li>`;
+  });
 </script>
-
 </body>
 </html>
