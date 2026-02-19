@@ -5,135 +5,102 @@
   <title>ERLC CAD - Officer</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-100 font-sans flex flex-col items-center p-4">
 
-<!-- Navbar -->
-<div class="flex justify-between items-center p-4 bg-blue-700 text-white shadow relative">
-  <h1 class="text-xl font-bold">ERLC Officer CAD</h1>
-  
-  <!-- Settings dropdown -->
-  <div class="relative">
-    <button id="settings-btn" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Settings ▾</button>
-    <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded shadow-lg text-black z-50">
-      <button id="change-callsign-btn" class="w-full text-left px-4 py-2 hover:bg-gray-200">Change Callsign</button>
-      <button id="switch-role-btn" class="w-full text-left px-4 py-2 hover:bg-gray-200">Switch Role</button>
+<div class="w-full max-w-4xl">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-blue-700">Officer Dashboard</h1>
+    <div>
+      <span id="discord-info" class="mr-4 font-medium"></span>
+      <select id="settings-dropdown" class="border rounded p-1">
+        <option value="changeCallsign">Change Callsign</option>
+        <option value="switchRole">Switch Role</option>
+      </select>
     </div>
   </div>
-</div>
 
-<!-- Callsign display -->
-<div class="p-4 flex items-center space-x-4">
-  <span class="font-bold">Callsign:</span>
-  <span id="callsign-display" class="font-semibold">Loading...</span>
-</div>
-
-<!-- 10-code buttons -->
-<div class="p-4 grid grid-cols-5 gap-3">
-  <button class="code-btn bg-green-500 text-white font-bold py-2 rounded" data-code="10-8">10-8</button>
-  <button class="code-btn bg-red-500 text-white font-bold py-2 rounded" data-code="10-7">10-7</button>
-  <button class="code-btn bg-yellow-500 text-white font-bold py-2 rounded" data-code="10-11">10-11</button>
-  <button class="code-btn bg-pink-600 text-white font-bold py-2 rounded" data-code="10-99">10-99 (Panic)</button>
-  <button class="code-btn bg-purple-500 text-white font-bold py-2 rounded" data-code="10-80">10-80</button>
-</div>
-
-<!-- Dropdown for other codes -->
-<div class="p-4">
-  <label for="other-codes" class="font-semibold mb-2 block">Other Codes:</label>
-  <select id="other-codes" class="border p-2 rounded w-full">
-    <option value="">Select Code</option>
-    <option value="10-50">10-50</option>
-    <option value="10-99A">10-99A</option>
-    <!-- Add more here -->
-  </select>
-</div>
-
-<!-- Callsign modal -->
-<div id="callsign-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
-  <div class="bg-white rounded p-6 w-80 shadow">
-    <h2 class="text-lg font-bold mb-4">Enter your Callsign</h2>
-    <input id="callsign-input" type="text" placeholder="e.g. Unit 12" class="border p-2 w-full rounded mb-4"/>
-    <button id="callsign-submit" class="bg-blue-700 text-white px-4 py-2 rounded w-full">Save</button>
+  <!-- 10-code buttons -->
+  <div class="flex flex-wrap gap-2 mb-4">
+    <button onclick="updateStatus('10-8')" class="bg-green-600 text-white p-2 rounded">10-8</button>
+    <button onclick="updateStatus('10-7')" class="bg-gray-600 text-white p-2 rounded">10-7</button>
+    <button onclick="updateStatus('10-11')" class="bg-yellow-500 text-white p-2 rounded">10-11</button>
+    <button onclick="updateStatus('10-99')" class="bg-red-600 text-white p-2 rounded">10-99</button>
+    <button onclick="updateStatus('10-80')" class="bg-orange-500 text-white p-2 rounded">10-80</button>
+    <!-- Dropdown for extra codes -->
+    <select id="extra-codes" onchange="updateStatus(this.value)" class="border rounded p-2">
+      <option value="">Other Codes</option>
+      <!-- Add more codes here -->
+      <option value="10-50">10-50</option>
+      <option value="10-60">10-60</option>
+    </select>
   </div>
+
+  <div id="status-message" class="text-red-500 font-semibold mb-4"></div>
 </div>
 
 <script>
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+const ws = new WebSocket("wss://cad-backend-0ivi.onrender.com");
 
-// Redirect if not logged in
-  if (!token || !role) {
+// Check login
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+if (!token || !role || role === "dispatch") {
+  window.location.href = "index.html";
+}
+
+// Setup callsign
+let callsign = localStorage.getItem("callsign");
+if (!callsign) {
+  callsign = prompt("Enter your callsign:");
+  localStorage.setItem("callsign", callsign);
+}
+
+// Show Discord info
+document.getElementById("discord-info").innerText =
+  `${localStorage.getItem("discordName")} (${localStorage.getItem("discordID")})`;
+
+// WebSocket logic
+ws.addEventListener("open", () => {
+  console.log("Connected to CAD WebSocket");
+  // Register officer
+  ws.send(JSON.stringify({
+    type: "register",
+    callsign,
+    status: "10-8",
+    discordName: localStorage.getItem("discordName"),
+    discordID: localStorage.getItem("discordID")
+  }));
+});
+
+// Update officer status
+function updateStatus(newStatus) {
+  if (!newStatus) return;
+  ws.send(JSON.stringify({
+    type: "statusUpdate",
+    callsign,
+    status: newStatus,
+    discordName: localStorage.getItem("discordName"),
+    discordID: localStorage.getItem("discordID")
+  }));
+  document.getElementById("status-message").innerText = `Status updated to ${newStatus}`;
+}
+
+// Settings dropdown
+document.getElementById("settings-dropdown").addEventListener("change", (e) => {
+  const val = e.target.value;
+  if (val === "changeCallsign") {
+    const newCallsign = prompt("Enter new callsign:");
+    if (newCallsign) {
+      callsign = newCallsign;
+      localStorage.setItem("callsign", callsign);
+      updateStatus("10-8"); // re-register
+    }
+  } else if (val === "switchRole") {
+    localStorage.removeItem("role");
+    localStorage.removeItem("token");
     window.location.href = "index.html";
   }
-
-  
-  // ====== Callsign handling ======
-  const modal = document.getElementById('callsign-modal');
-  const callsignDisplay = document.getElementById('callsign-display');
-
-  function showModal() { modal.classList.remove('hidden'); }
-  function hideModal() { modal.classList.add('hidden'); }
-
-  // Load callsign or show modal if first visit
-  let callsign = localStorage.getItem('callsign');
-  if (!callsign) showModal();
-  else callsignDisplay.innerText = callsign;
-
-  document.getElementById('callsign-submit').addEventListener('click', () => {
-    const val = document.getElementById('callsign-input').value.trim();
-    if (val) {
-      localStorage.setItem('callsign', val);
-      callsignDisplay.innerText = val;
-      hideModal();
-    }
-  });
-
-  document.getElementById('change-callsign-btn').addEventListener('click', showModal);
-
-  // ===== Settings dropdown =====
-  const settingsBtn = document.getElementById('settings-btn');
-  const settingsDropdown = document.getElementById('settings-dropdown');
-
-  settingsBtn.addEventListener('click', () => {
-    settingsDropdown.classList.toggle('hidden');
-  });
-
-  document.getElementById('switch-role-btn').addEventListener('click', () => {
-    localStorage.setItem('role', 'dispatch');
-    window.location.href = 'dispatch.html';
-  });
-
-  // ===== WebSocket =====
-  const socket = new WebSocket('wss://cad-backend-0ivi.onrender.com'); // replace with your WS endpoint
-
-  socket.addEventListener('open', () => {
-    console.log('Connected to CAD WebSocket');
-
-    // Register officer on connect
-    socket.send(JSON.stringify({
-      type: 'register',
-      callsign: callsign || 'Unknown',
-      status: '10-8'
-    }));
-  });
-
-  // ===== 10-code buttons =====
-  document.querySelectorAll('.code-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const code = btn.dataset.code;
-      updateStatus(code);
-    });
-  });
-
-  document.getElementById('other-codes').addEventListener('change', e => {
-    const code = e.target.value;
-    if (code) updateStatus(code);
-  });
-
-  function updateStatus(code) {
-    const statusUpdate = { type: 'statusUpdate', callsign: callsign, status: code };
-    socket.send(JSON.stringify(statusUpdate));
-    console.log('Status sent:', statusUpdate);
-  }
+});
 </script>
 </body>
 </html>
